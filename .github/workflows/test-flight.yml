@@ -19,6 +19,7 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v4
         with:
+          repository: derickcoder44/px4-flight-test-docker
           submodules: recursive
 
       - name: set up Docker Buildx
