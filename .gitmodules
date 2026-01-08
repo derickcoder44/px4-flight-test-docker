@@ -1,0 +1,3 @@
+[submodule "px4-sim-docker"]
+	path = px4-sim-docker
+	url = https://github.com/derickcoder44/px4-sim-docker.git
