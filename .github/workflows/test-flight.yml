@@ -36,7 +36,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/derickcoder44/px4-flight-test-docker
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -57,7 +57,7 @@ jobs:
     needs: build-image
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+      image: ghcr.io/derickcoder44/px4-flight-test-docker:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
