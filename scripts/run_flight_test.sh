@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Source ROS 2 environment
+source /opt/ros/humble/setup.bash
+source /root/workspace/ros2_ws/install/setup.bash
+
 LOG_DIR=/root/logs
 mkdir -p "$LOG_DIR"
 
@@ -40,8 +44,6 @@ fi
 # Wait for ROS topics to appear
 echo "Waiting for ROS topics..."
 timeout 60 bash -c '
-    source /opt/ros/humble/setup.bash
-    source /root/workspace/ros2_ws/install/setup.bash
     while ! ros2 topic list | grep -q /fmu/fmu/out/vehicle_status; do
         echo "Waiting for vehicle_status topic..."
         sleep 2

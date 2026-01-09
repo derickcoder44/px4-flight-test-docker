@@ -67,6 +67,7 @@ jobs:
 
     steps:
       - name: run flight test
+        shell: bash
         run: |
           /root/scripts/run_flight_test.sh
 
