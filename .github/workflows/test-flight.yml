@@ -51,7 +51,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' && github.event_name != 'workflow_call' && github.repository == 'derickcoder44/px4-flight-test-docker' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
+          cache-from: |
+            type=gha
+            type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
           cache-to: type=gha,mode=max
 
   run-flight-test:
