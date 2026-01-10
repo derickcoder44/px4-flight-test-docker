@@ -2,14 +2,11 @@ FROM ghcr.io/derickcoder44/px4-sim-docker:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install video recording dependencies
+# Install dependencies for headless rendering and camera recording
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    x11-utils \
-    xvfb \
-    xdotool \
-    x11-apps \
-    mesa-utils \
+    python3-pip \
+    python3-opencv \
+    ros-humble-cv-bridge \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
     libglvnd0 \
@@ -17,9 +14,13 @@ RUN apt-get update && apt-get install -y \
     libegl1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Python packages for video recording
+RUN pip3 install --no-cache-dir opencv-python
+
 # Copy flight test scripts
 COPY scripts/flight_test.py /root/scripts/
 COPY scripts/run_flight_test.sh /root/scripts/
+COPY scripts/record_camera.py /root/scripts/
 RUN chmod +x /root/scripts/*.sh /root/scripts/*.py
 
 WORKDIR /root/workspace
