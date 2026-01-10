@@ -22,8 +22,11 @@ sleep 2
 echo "Starting PX4 SITL with Gazebo (headless + camera)..."
 cd /root/workspace/PX4-Autopilot
 
-# Use headless rendering for camera sensors (EGL-based, no X11 needed)
-HEADLESS=1 make px4_sitl gz_x500_mono_cam > "$LOG_DIR/px4_sitl.log" 2>&1 &
+# Use environment variables to specify the x500_mono_cam model
+# PX4_SYS_AUTOSTART=4010 is for x500_mono_cam (default camera airframe)
+# PX4_SIM_MODEL specifies the Gazebo model
+HEADLESS=1 PX4_SYS_AUTOSTART=4010 PX4_SIM_MODEL=gz_x500_mono_cam \
+  make px4_sitl gz_x500 > "$LOG_DIR/px4_sitl.log" 2>&1 &
 PX4_PID=$!
 echo "PX4 SITL started (PID: $PX4_PID)"
 
