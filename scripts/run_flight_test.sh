@@ -18,6 +18,11 @@ export GALLIUM_DRIVER=llvmpipe
 # Force Gazebo to use GUI
 export GZ_SIM_RENDER_ENGINE=ogre
 
+# Source ROS2 environment globally for DDS agent
+source /opt/ros/humble/setup.bash
+source /root/workspace/ros2_ws/install/setup.bash
+export ROS_DOMAIN_ID=0
+
 # Start virtual display for video recording with GLX support
 echo "Starting virtual display..."
 Xvfb :99 -screen 0 1920x1080x24 +extension GLX +render -noreset > "$LOG_DIR/xvfb.log" 2>&1 &
@@ -29,15 +34,10 @@ echo "Virtual display started (PID: $XVFB_PID)"
 echo "Verifying display..."
 DISPLAY=:99 xdpyinfo > /dev/null 2>&1 && echo "Display :99 is ready" || echo "WARNING: Display :99 not ready"
 
-# Start DDS Agent with ROS2 environment
+# Start DDS Agent (ROS2 environment already sourced above)
 echo "Starting MicroXRCE-DDS Agent..."
-bash -c '
-  source /opt/ros/humble/setup.bash
-  source /root/workspace/ros2_ws/install/setup.bash
-  MicroXRCEAgent udp4 -p 8888 > /root/logs/dds_agent.log 2>&1 &
-  echo $! > /tmp/dds_agent.pid
-'
-DDS_PID=$(cat /tmp/dds_agent.pid)
+MicroXRCEAgent udp4 -p 8888 > "$LOG_DIR/dds_agent.log" 2>&1 &
+DDS_PID=$!
 echo "DDS Agent started (PID: $DDS_PID)"
 sleep 2
 
