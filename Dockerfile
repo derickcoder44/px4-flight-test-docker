@@ -7,6 +7,12 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     x11-utils \
     xvfb \
+    mesa-utils \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libglvnd0 \
+    libglx0 \
+    libegl1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy flight test scripts

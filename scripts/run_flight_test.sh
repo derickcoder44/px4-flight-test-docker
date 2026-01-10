@@ -10,11 +10,14 @@ mkdir -p "$LOG_DIR"
 
 echo "=== Starting PX4 Flight Test ==="
 
-# Start virtual display for video recording
+# Start virtual display for video recording with GLX support
 echo "Starting virtual display..."
-Xvfb :99 -screen 0 1280x720x24 > "$LOG_DIR/xvfb.log" 2>&1 &
+Xvfb :99 -screen 0 1280x720x24 +extension GLX +render -noreset > "$LOG_DIR/xvfb.log" 2>&1 &
 XVFB_PID=$!
 export DISPLAY=:99
+# Use software rendering for Mesa/OpenGL
+export LIBGL_ALWAYS_SOFTWARE=1
+export GALLIUM_DRIVER=llvmpipe
 sleep 2
 echo "Virtual display started (PID: $XVFB_PID)"
 

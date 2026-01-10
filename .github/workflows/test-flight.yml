@@ -66,6 +66,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: get short sha
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
       - name: run flight test
         shell: bash
         run: |
@@ -75,6 +79,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flight-test-logs
+          name: flight-test-logs-${{ steps.sha.outputs.short }}
           path: /root/logs/
           retention-days: 5
