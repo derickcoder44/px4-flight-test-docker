@@ -48,13 +48,19 @@ if [ ! -f "./build/px4_sitl_default/bin/px4" ]; then
     make px4_sitl_default > "$LOG_DIR/px4_build.log" 2>&1
 fi
 
-# Start Gazebo GUI FIRST (this forces GUI mode)
-echo "Starting Gazebo GUI..."
+# Start Gazebo with GUI (force Qt to use X11 display)
+echo "Starting Gazebo with GUI..."
+echo "Display check: DISPLAY=$DISPLAY"
+
+# Force Qt to use X11 backend (not offscreen or wayland)
+export QT_QPA_PLATFORM=xcb
 export GZ_SIM_RESOURCE_PATH=/root/workspace/PX4-Autopilot/Tools/simulation/gz/models:/root/workspace/PX4-Autopilot/Tools/simulation/gz/worlds
+
+# Start gz-sim WITHOUT -s flag (server+gui mode), WITH -r to run immediately
 gz sim -v4 -r /root/workspace/PX4-Autopilot/Tools/simulation/gz/worlds/default.sdf > "$LOG_DIR/gz_sim.log" 2>&1 &
 GZ_PID=$!
-echo "Gazebo started (PID: $GZ_PID)"
-sleep 8
+echo "Gazebo started (PID: $GZ_PID) with QT_QPA_PLATFORM=xcb"
+sleep 10
 
 # Now start PX4 SITL (it will connect to the running Gazebo instance)
 echo "Starting PX4 SITL..."
