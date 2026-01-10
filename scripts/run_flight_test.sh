@@ -10,17 +10,39 @@ mkdir -p "$LOG_DIR"
 
 echo "=== Starting PX4 Flight Test ==="
 
-# Start DDS Agent
+# Start virtual display for video recording
+echo "Starting virtual display..."
+Xvfb :99 -screen 0 1280x720x24 > "$LOG_DIR/xvfb.log" 2>&1 &
+XVFB_PID=$!
+export DISPLAY=:99
+sleep 2
+echo "Virtual display started (PID: $XVFB_PID)"
+
+# Start video recording
+echo "Starting video recording..."
+ffmpeg -video_size 1280x720 -framerate 30 -f x11grab -i :99 \
+    -c:v libx264 -preset ultrafast -pix_fmt yuv420p \
+    "$LOG_DIR/flight_test.mp4" > "$LOG_DIR/ffmpeg.log" 2>&1 &
+FFMPEG_PID=$!
+echo "Video recording started (PID: $FFMPEG_PID)"
+sleep 2
+
+# Start DDS Agent with ROS2 environment
 echo "Starting MicroXRCE-DDS Agent..."
-MicroXRCEAgent udp4 -p 8888 > "$LOG_DIR/dds_agent.log" 2>&1 &
-DDS_PID=$!
+bash -c '
+  source /opt/ros/humble/setup.bash
+  source /root/workspace/ros2_ws/install/setup.bash
+  MicroXRCEAgent udp4 -p 8888 > /root/logs/dds_agent.log 2>&1 &
+  echo $! > /tmp/dds_agent.pid
+'
+DDS_PID=$(cat /tmp/dds_agent.pid)
 echo "DDS Agent started (PID: $DDS_PID)"
 sleep 2
 
-# Start PX4 SITL with Gazebo
+# Start PX4 SITL with Gazebo (GUI enabled for video recording)
 echo "Starting PX4 SITL with Gazebo..."
 cd /root/workspace/PX4-Autopilot
-HEADLESS=1 make px4_sitl gz_x500 > "$LOG_DIR/px4_sitl.log" 2>&1 &
+make px4_sitl gz_x500 > "$LOG_DIR/px4_sitl.log" 2>&1 &
 PX4_PID=$!
 echo "PX4 SITL started (PID: $PX4_PID)"
 
@@ -76,6 +98,21 @@ echo "=== Stopping Services ==="
 kill $PX4_PID 2>/dev/null || true
 kill $DDS_PID 2>/dev/null || true
 
+# Stop video recording gracefully
+echo "Stopping video recording..."
+kill -INT $FFMPEG_PID 2>/dev/null || true
+wait $FFMPEG_PID 2>/dev/null || true
+sleep 2
+
+# Stop virtual display
+kill $XVFB_PID 2>/dev/null || true
+
 echo ""
 echo "=== Flight Test Complete ==="
 echo "Logs available in: $LOG_DIR"
+if [ -f "$LOG_DIR/flight_test.mp4" ]; then
+    VIDEO_SIZE=$(du -h "$LOG_DIR/flight_test.mp4" | cut -f1)
+    echo "Video saved: $LOG_DIR/flight_test.mp4 ($VIDEO_SIZE)"
+else
+    echo "WARNING: Video file not found!"
+fi
