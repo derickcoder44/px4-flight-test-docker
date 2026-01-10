@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     x11-utils \
     xvfb \
+    xdotool \
     mesa-utils \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
