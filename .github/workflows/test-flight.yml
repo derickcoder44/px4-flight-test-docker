@@ -41,7 +41,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: build and push Docker image
@@ -56,8 +56,45 @@ jobs:
             type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
           cache-to: type=gha,mode=max
 
+  test-build-only:
+    # On PRs, just verify the image builds
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: build test image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: test-image:pr
+          cache-from: |
+            type=gha
+            type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
+
+      - name: run flight test in container
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/logs:/root/logs \
+            test-image:pr \
+            /root/scripts/run_flight_test.sh
+
+      - name: upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flight-test-logs-pr-${{ github.event.pull_request.number }}
+          path: ${{ github.workspace }}/logs/
+          retention-days: 5
+
   run-flight-test:
-    # Only run tests after pushing to main (not on PRs)
+    # On main branch pushes, test the published image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-image
     runs-on: ubuntu-latest
