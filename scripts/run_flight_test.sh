@@ -41,13 +41,26 @@ DDS_PID=$!
 echo "DDS Agent started (PID: $DDS_PID)"
 sleep 2
 
-# Start PX4 SITL with Gazebo (GUI enabled for video recording)
-echo "Starting PX4 SITL with Gazebo..."
+# Build PX4 if needed (silent build check)
 cd /root/workspace/PX4-Autopilot
-# Force Gazebo GUI to run (not headless)
-export PX4_GZ_STANDALONE=0
-export GZ_SIM_RENDER_ENGINE=ogre
-make px4_sitl gz_x500 > "$LOG_DIR/px4_sitl.log" 2>&1 &
+if [ ! -f "./build/px4_sitl_default/bin/px4" ]; then
+    echo "Building PX4 SITL..."
+    make px4_sitl_default > "$LOG_DIR/px4_build.log" 2>&1
+fi
+
+# Start Gazebo GUI FIRST (this forces GUI mode)
+echo "Starting Gazebo GUI..."
+export GZ_SIM_RESOURCE_PATH=/root/workspace/PX4-Autopilot/Tools/simulation/gz/models:/root/workspace/PX4-Autopilot/Tools/simulation/gz/worlds
+gz sim -v4 -r /root/workspace/PX4-Autopilot/Tools/simulation/gz/worlds/default.sdf > "$LOG_DIR/gz_sim.log" 2>&1 &
+GZ_PID=$!
+echo "Gazebo started (PID: $GZ_PID)"
+sleep 8
+
+# Now start PX4 SITL (it will connect to the running Gazebo instance)
+echo "Starting PX4 SITL..."
+cd /root/workspace/PX4-Autopilot
+PX4_GZ_MODEL_POSE="0,0,0,0,0,0" PX4_GZ_MODEL=x500 PX4_SYS_AUTOSTART=4001 \
+./build/px4_sitl_default/bin/px4 -i 1 -d > "$LOG_DIR/px4_sitl.log" 2>&1 &
 PX4_PID=$!
 echo "PX4 SITL started (PID: $PX4_PID)"
 
@@ -174,8 +187,9 @@ echo "=== Stopping Services ==="
 echo "Stopping video recording..."
 kill -INT $FFMPEG_PID 2>/dev/null || true
 
-# Kill PX4 and DDS
+# Kill PX4, Gazebo, and DDS
 kill $PX4_PID 2>/dev/null || true
+kill $GZ_PID 2>/dev/null || true
 kill $DDS_PID 2>/dev/null || true
 
 # Give ffmpeg 3 seconds to finalize, then force kill if needed
