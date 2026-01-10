@@ -57,20 +57,44 @@ sleep 10
 
 # Wait for Gazebo window to appear and maximize it
 echo "Waiting for Gazebo window..."
+echo "Listing all windows..."
+DISPLAY=:99 xdotool search --name ".*" 2>/dev/null || echo "No windows found"
+
 for i in {1..30}; do
-    WINDOW_ID=$(DISPLAY=:99 xdotool search --onlyvisible --class gazebo 2>/dev/null | head -1)
+    # Try multiple patterns - gz-sim, Gazebo, Scene, or any window
+    WINDOW_ID=$(DISPLAY=:99 xdotool search --name "Gazebo\|Scene\|gz" 2>/dev/null | head -1)
+
+    if [ -z "$WINDOW_ID" ]; then
+        # Try by class name
+        WINDOW_ID=$(DISPLAY=:99 xdotool search --class "gz" 2>/dev/null | head -1)
+    fi
+
+    if [ -z "$WINDOW_ID" ]; then
+        # Just get any window
+        WINDOW_ID=$(DISPLAY=:99 xdotool search --name ".*" 2>/dev/null | head -1)
+    fi
+
     if [ -n "$WINDOW_ID" ]; then
-        echo "Gazebo window found (ID: $WINDOW_ID)"
-        DISPLAY=:99 xdotool windowsize $WINDOW_ID 1920 1080
-        DISPLAY=:99 xdotool windowactivate $WINDOW_ID
-        echo "Gazebo window maximized"
+        echo "Window found (ID: $WINDOW_ID)"
+        # Get window info
+        DISPLAY=:99 xdotool getwindowname $WINDOW_ID 2>/dev/null || echo "Unknown name"
+        DISPLAY=:99 xdotool getwindowclassname $WINDOW_ID 2>/dev/null || echo "Unknown class"
+
+        # Resize and activate
+        DISPLAY=:99 xdotool windowsize $WINDOW_ID 1920 1080 2>/dev/null
+        DISPLAY=:99 xdotool windowactivate $WINDOW_ID 2>/dev/null
+        echo "Window resized to 1920x1080"
         break
     fi
-    sleep 1
+
+    echo "  Attempt $i: No window found yet..."
+    sleep 2
 done
 
 if [ -z "$WINDOW_ID" ]; then
-    echo "WARNING: Gazebo window not found after 30s"
+    echo "WARNING: No window found after 60s"
+    echo "Listing all X11 clients:"
+    DISPLAY=:99 xlsclients 2>/dev/null || echo "xlsclients failed"
 fi
 
 # Start video recording now that window is ready
@@ -127,14 +151,21 @@ python3 /root/scripts/flight_test.py
 # Cleanup
 echo ""
 echo "=== Stopping Services ==="
+
+# Stop video recording first (send SIGINT for clean shutdown but don't wait)
+echo "Stopping video recording..."
+kill -INT $FFMPEG_PID 2>/dev/null || true
+
+# Kill PX4 and DDS
 kill $PX4_PID 2>/dev/null || true
 kill $DDS_PID 2>/dev/null || true
 
-# Stop video recording gracefully
-echo "Stopping video recording..."
-kill -INT $FFMPEG_PID 2>/dev/null || true
-wait $FFMPEG_PID 2>/dev/null || true
-sleep 2
+# Give ffmpeg 3 seconds to finalize, then force kill if needed
+sleep 3
+if kill -0 $FFMPEG_PID 2>/dev/null; then
+    echo "Force killing ffmpeg..."
+    kill -9 $FFMPEG_PID 2>/dev/null || true
+fi
 
 # Stop virtual display
 kill $XVFB_PID 2>/dev/null || true

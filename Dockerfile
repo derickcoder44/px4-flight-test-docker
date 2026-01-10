@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     x11-utils \
     xvfb \
     xdotool \
+    x11-apps \
     mesa-utils \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
