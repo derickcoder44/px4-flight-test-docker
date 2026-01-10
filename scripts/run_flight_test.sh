@@ -34,9 +34,9 @@ echo "Virtual display started (PID: $XVFB_PID)"
 echo "Verifying display..."
 DISPLAY=:99 xdpyinfo > /dev/null 2>&1 && echo "Display :99 is ready" || echo "WARNING: Display :99 not ready"
 
-# Start DDS Agent (ROS2 environment already sourced above)
-echo "Starting MicroXRCE-DDS Agent..."
-MicroXRCEAgent udp4 -p 8888 > "$LOG_DIR/dds_agent.log" 2>&1 &
+# Start DDS Agent on DDS domain 0 (ROS2 environment already sourced above)
+echo "Starting MicroXRCE-DDS Agent on domain 0..."
+MicroXRCEAgent udp4 -p 8888 -d 0 > "$LOG_DIR/dds_agent.log" 2>&1 &
 DDS_PID=$!
 echo "DDS Agent started (PID: $DDS_PID)"
 sleep 2
