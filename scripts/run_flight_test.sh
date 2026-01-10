@@ -60,6 +60,9 @@ echo "Waiting for Gazebo window..."
 echo "Listing all windows..."
 DISPLAY=:99 xdotool search --name ".*" 2>/dev/null || echo "No windows found"
 
+# Disable exit-on-error for window detection
+set +e
+
 for i in {1..30}; do
     # Try multiple patterns - gz-sim, Gazebo, Scene, or any window
     WINDOW_ID=$(DISPLAY=:99 xdotool search --name "Gazebo\|Scene\|gz" 2>/dev/null | head -1)
@@ -76,13 +79,25 @@ for i in {1..30}; do
 
     if [ -n "$WINDOW_ID" ]; then
         echo "Window found (ID: $WINDOW_ID)"
-        # Get window info
-        DISPLAY=:99 xdotool getwindowname $WINDOW_ID 2>/dev/null || echo "Unknown name"
-        DISPLAY=:99 xdotool getwindowclassname $WINDOW_ID 2>/dev/null || echo "Unknown class"
 
-        # Resize and activate
-        DISPLAY=:99 xdotool windowsize $WINDOW_ID 1920 1080 2>/dev/null
-        DISPLAY=:99 xdotool windowactivate $WINDOW_ID 2>/dev/null
+        # Get window info (don't fail if these commands error)
+        WINDOW_NAME=$(DISPLAY=:99 xdotool getwindowname $WINDOW_ID 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$WINDOW_NAME" ]; then
+            echo "  Window name: $WINDOW_NAME"
+        else
+            echo "  Window name: (unknown)"
+        fi
+
+        WINDOW_CLASS=$(DISPLAY=:99 xdotool getwindowclassname $WINDOW_ID 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$WINDOW_CLASS" ]; then
+            echo "  Window class: $WINDOW_CLASS"
+        else
+            echo "  Window class: (unknown)"
+        fi
+
+        # Resize and activate (ignore errors)
+        DISPLAY=:99 xdotool windowsize $WINDOW_ID 1920 1080 2>/dev/null || true
+        DISPLAY=:99 xdotool windowactivate $WINDOW_ID 2>/dev/null || true
         echo "Window resized to 1920x1080"
         break
     fi
@@ -96,6 +111,9 @@ if [ -z "$WINDOW_ID" ]; then
     echo "Listing all X11 clients:"
     DISPLAY=:99 xlsclients 2>/dev/null || echo "xlsclients failed"
 fi
+
+# Re-enable exit-on-error
+set -e
 
 # Start video recording now that window is ready
 echo "Starting video recording..."
