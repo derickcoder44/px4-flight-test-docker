@@ -57,10 +57,12 @@ jobs:
           cache-to: type=gha,mode=max
 
   run-flight-test:
+    # Only run tests after pushing to main (not on PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-image
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/derickcoder44/px4-flight-test-docker:${{ github.head_ref || github.ref_name }}
+      image: ghcr.io/derickcoder44/px4-flight-test-docker:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
