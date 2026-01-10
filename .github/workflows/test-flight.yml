@@ -56,9 +56,8 @@ jobs:
             type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
           cache-to: type=gha,mode=max
 
-  test-build-only:
-    # On PRs, just verify the image builds
-    if: github.event_name == 'pull_request'
+  run-flight-test:
+    # Test on both PRs and main branch pushes
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo
@@ -73,7 +72,7 @@ jobs:
           context: .
           push: false
           load: true
-          tags: test-image:pr
+          tags: test-image:local
           cache-from: |
             type=gha
             type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
@@ -82,42 +81,13 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}/logs:/root/logs \
-            test-image:pr \
+            test-image:local \
             /root/scripts/run_flight_test.sh
 
       - name: upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flight-test-logs-pr-${{ github.event.pull_request.number }}
+          name: flight-test-logs-${{ github.sha }}
           path: ${{ github.workspace }}/logs/
-          retention-days: 5
-
-  run-flight-test:
-    # On main branch pushes, test the published image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build-image
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/derickcoder44/px4-flight-test-docker:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    steps:
-      - name: get short sha
-        id: sha
-        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
-
-      - name: run flight test
-        shell: bash
-        run: |
-          /root/scripts/run_flight_test.sh
-
-      - name: upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flight-test-logs-${{ steps.sha.outputs.short }}
-          path: /root/logs/
           retention-days: 5
