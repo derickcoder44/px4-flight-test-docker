@@ -14,8 +14,22 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
 
     steps:
+      - name: free disk space
+        run: |
+          echo "Before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          echo "After cleanup:"
+          df -h
+
       - name: checkout repo
         uses: actions/checkout@v4
         with:
@@ -26,7 +40,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: log in to container registry
-        if: github.event_name != 'pull_request' && github.event_name != 'workflow_call' && github.repository == 'derickcoder44/px4-flight-test-docker'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -45,10 +58,11 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' && github.event_name != 'workflow_call' && github.repository == 'derickcoder44/px4-flight-test-docker' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: |
@@ -56,38 +70,33 @@ jobs:
             type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
           cache-to: type=gha,mode=max
 
+      - name: output image tag
+        id: tag
+        run: |
+          # Use the first tag from the metadata output
+          TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Using image: $TAG"
+
   run-flight-test:
     # Test on both PRs and main branch pushes
+    needs: build-image
     runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.build-image.outputs.image_tag }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
-      - name: checkout repo
-        uses: actions/checkout@v4
-
-      - name: set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: build test image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          load: true
-          tags: test-image:local
-          cache-from: |
-            type=gha
-            type=registry,ref=ghcr.io/derickcoder44/px4-flight-test-docker:latest
-
-      - name: run flight test in container
+      - name: run flight test
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/logs:/root/logs \
-            test-image:local \
-            /root/scripts/run_flight_test.sh
+          /root/scripts/run_flight_test.sh
 
       - name: upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: flight-test-logs-${{ github.sha }}
-          path: ${{ github.workspace }}/logs/
+          path: /root/logs/
           retention-days: 5
