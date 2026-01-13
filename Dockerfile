@@ -17,11 +17,18 @@ RUN apt-get update && apt-get install -y \
 # Install Python packages for video recording
 RUN pip3 install --no-cache-dir opencv-python
 
+# Fix NumPy compatibility with cv_bridge
+RUN pip3 install "numpy<2"
+
 # Copy flight test scripts
 COPY scripts/flight_test.py /root/scripts/
 COPY scripts/run_flight_test.sh /root/scripts/
+COPY scripts/chase_camera_tracker.py /root/scripts/
 COPY scripts/record_camera.py /root/scripts/
 RUN chmod +x /root/scripts/*.sh /root/scripts/*.py
+
+# Copy chase camera world file
+COPY worlds/chase_camera.sdf /root/worlds/chase_camera.sdf
 
 WORKDIR /root/workspace
 
