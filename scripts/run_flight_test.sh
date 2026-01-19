@@ -51,9 +51,19 @@ DDS_PID=$!
 echo "DDS Agent started (PID: $DDS_PID)"
 sleep 1
 
+# Create custom PX4 startup script to enable logging
+echo "Configuring PX4 logging..."
+mkdir -p /root/workspace/PX4-Autopilot/build/px4_sitl_default/rootfs/fs/microsd/etc
+cat > /root/workspace/PX4-Autopilot/build/px4_sitl_default/rootfs/fs/microsd/etc/extras.txt << 'EOF'
+# Enable logging immediately
+logger on
+EOF
+
 # Start PX4 SITL with Gazebo GUI (HEADLESS must be unset, not set to 0)
 echo "Starting PX4 SITL with Gazebo GUI..."
 cd /root/workspace/PX4-Autopilot
+# Enable logging from start
+export PX4_SIM_SPEED_FACTOR=1
 make px4_sitl gz_x500 > "$LOG_DIR/px4_sitl.log" 2>&1 &
 PX4_PID=$!
 echo "PX4 SITL started (PID: $PX4_PID)"
@@ -170,11 +180,20 @@ sleep 3  # Give ffmpeg time to finalize the video file
 
 # Copy PX4 ulog files
 echo "Copying PX4 ulog files..."
-PX4_LOG_DIR="/root/workspace/PX4-Autopilot/build/px4_sitl_default/logs"
+PX4_LOG_DIR="/root/workspace/PX4-Autopilot/build/px4_sitl_default/rootfs/log"
 if [ -d "$PX4_LOG_DIR" ]; then
-    cp -r "$PX4_LOG_DIR"/*.ulg "$LOG_DIR/" 2>/dev/null && echo "ULog files copied" || echo "No ULog files found"
+    # Find and copy all .ulg files from the log directory (which is organized by date)
+    find "$PX4_LOG_DIR" -name "*.ulg" -exec cp {} "$LOG_DIR/" \; 2>/dev/null
+    ULOG_COUNT=$(ls -1 "$LOG_DIR"/*.ulg 2>/dev/null | wc -l)
+    if [ "$ULOG_COUNT" -gt 0 ]; then
+        echo "Copied $ULOG_COUNT ULog file(s)"
+    else
+        echo "No ULog files found in $PX4_LOG_DIR"
+    fi
 else
     echo "PX4 log directory not found: $PX4_LOG_DIR"
+    echo "Checking alternative locations..."
+    find /root/workspace/PX4-Autopilot/build -name "*.ulg" 2>/dev/null | head -5
 fi
 
 # Stop window manager and Xvfb
@@ -185,4 +204,11 @@ echo ""
 echo "=== Flight Test Complete ==="
 echo "Logs available in: $LOG_DIR"
 echo "Video recording saved to: $LOG_DIR/flight_test_recording.mp4"
-echo "ULog files: $LOG_DIR/*.ulg"
+if ls "$LOG_DIR"/*.ulg 1> /dev/null 2>&1; then
+    echo "ULog files:"
+    ls -lh "$LOG_DIR"/*.ulg
+else
+    echo "No ULog files found"
+    echo "Checking PX4 logs for logger messages..."
+    grep -i "logger\|opened log file" "$LOG_DIR/px4_sitl.log" | tail -5 || echo "No logger messages found"
+fi
