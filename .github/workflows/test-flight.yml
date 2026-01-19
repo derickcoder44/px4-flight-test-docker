@@ -76,10 +76,10 @@ jobs:
             ghcr.io/derickcoder44/px4-flight-test-docker:${{ github.ref_name }} \
             /root/scripts/run_flight_test.sh
 
-      - name: upload logs and video
+      - name: upload logs, video, and ulog
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flight-test-logs
+          name: flight-test-outputs
           path: outputs/
           retention-days: 5

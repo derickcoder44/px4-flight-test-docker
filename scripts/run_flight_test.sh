@@ -168,6 +168,15 @@ echo "Stopping video recording..."
 kill -INT $FFMPEG_PID 2>/dev/null || true
 sleep 3  # Give ffmpeg time to finalize the video file
 
+# Copy PX4 ulog files
+echo "Copying PX4 ulog files..."
+PX4_LOG_DIR="/root/workspace/PX4-Autopilot/build/px4_sitl_default/logs"
+if [ -d "$PX4_LOG_DIR" ]; then
+    cp -r "$PX4_LOG_DIR"/*.ulg "$LOG_DIR/" 2>/dev/null && echo "ULog files copied" || echo "No ULog files found"
+else
+    echo "PX4 log directory not found: $PX4_LOG_DIR"
+fi
+
 # Stop window manager and Xvfb
 kill $WM_PID 2>/dev/null || true
 kill $XVFB_PID 2>/dev/null || true
@@ -176,3 +185,4 @@ echo ""
 echo "=== Flight Test Complete ==="
 echo "Logs available in: $LOG_DIR"
 echo "Video recording saved to: $LOG_DIR/flight_test_recording.mp4"
+echo "ULog files: $LOG_DIR/*.ulg"
