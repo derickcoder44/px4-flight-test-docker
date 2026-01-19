@@ -114,6 +114,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "ROS topics ready!"
+
+# Source ROS2 environment in main shell
+source /opt/ros/humble/setup.bash
+source /root/workspace/ros2_ws/install/setup.bash
+
 echo "Available topics:"
 ros2 topic list
 

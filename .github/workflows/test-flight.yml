@@ -9,7 +9,7 @@ on:
   workflow_call:
 
 jobs:
-  build-image:
+  build-and-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,34 +43,38 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: build and push Docker image
+      - name: build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
+          load: true
+          tags: flight-test:local
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  run-flight-test:
-    needs: build-image
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/derickcoder44/px4-flight-test-docker:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    steps:
       - name: run flight test
         run: |
-          /root/scripts/run_flight_test.sh
+          mkdir -p outputs
+          docker run --rm \
+            -v $(pwd)/outputs:/root/logs \
+            flight-test:local \
+            /root/scripts/run_flight_test.sh
 
-      - name: upload logs
+      - name: push Docker image
+        if: success()
+        run: |
+          docker tag flight-test:local ghcr.io/derickcoder44/px4-flight-test-docker:${{ github.ref_name }}
+          docker push ghcr.io/derickcoder44/px4-flight-test-docker:${{ github.ref_name }}
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker tag flight-test:local ghcr.io/derickcoder44/px4-flight-test-docker:latest
+            docker push ghcr.io/derickcoder44/px4-flight-test-docker:latest
+          fi
+
+      - name: upload logs and video
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: flight-test-logs
-          path: /root/logs/
+          path: outputs/
           retention-days: 5
