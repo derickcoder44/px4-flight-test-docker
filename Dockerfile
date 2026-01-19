@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     x11-utils \
     xvfb \
+    openbox \
+    mesa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy flight test scripts

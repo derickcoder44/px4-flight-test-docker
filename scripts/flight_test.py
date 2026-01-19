@@ -49,7 +49,16 @@ class FlightTestNode(Node):
 
         # Flight parameters
         self.takeoff_height = -5.0  # meters (NED frame, negative is up)
-        self.hover_duration = 10.0  # seconds
+        self.hover_duration = 5.0  # seconds
+
+        # Waypoints (NED frame: North, East, Down)
+        # Smaller 10m x 10m pattern for better visibility
+        self.waypoints = [
+            (10.0, 0.0, self.takeoff_height),   # 10m North
+            (10.0, 10.0, self.takeoff_height),  # 10m North, 10m East
+            (0.0, 10.0, self.takeoff_height),   # 10m East only
+            (0.0, 0.0, self.takeoff_height),    # Return to home position
+        ]
 
         self.get_logger().info('Flight test node initialized')
 
@@ -59,7 +68,11 @@ class FlightTestNode(Node):
     def arm(self):
         self.get_logger().info('Sending arm command')
         self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
-        time.sleep(1)
+        # Keep publishing setpoints while waiting for arm to complete
+        for _ in range(10):
+            self.publish_offboard_control_mode()
+            self.publish_trajectory_setpoint(0.0, 0.0, self.takeoff_height)
+            time.sleep(0.1)
 
     def disarm(self):
         self.get_logger().info('Sending disarm command')
@@ -69,7 +82,11 @@ class FlightTestNode(Node):
     def engage_offboard_mode(self):
         self.get_logger().info('Engaging offboard mode')
         self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
-        time.sleep(1)
+        # Keep publishing setpoints while waiting for mode change
+        for _ in range(10):
+            self.publish_offboard_control_mode()
+            self.publish_trajectory_setpoint(0.0, 0.0, self.takeoff_height)
+            time.sleep(0.1)
 
     def land(self):
         self.get_logger().info('Sending land command')
@@ -106,6 +123,17 @@ class FlightTestNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.trajectory_setpoint_pub.publish(msg)
 
+    def fly_to_waypoint(self, x, y, z, duration=3.0):
+        """Fly to a specific waypoint and hold for duration"""
+        self.get_logger().info(f'Flying to waypoint: ({x:.1f}m N, {y:.1f}m E, {-z:.1f}m altitude)')
+        start_time = time.time()
+        while time.time() - start_time < duration:
+            self.publish_offboard_control_mode()
+            self.publish_trajectory_setpoint(x, y, z)
+            time.sleep(0.1)
+            rclpy.spin_once(self, timeout_sec=0)
+        self.get_logger().info(f'Waypoint reached and held for {duration}s')
+
     def run_flight_test(self):
         self.get_logger().info('Starting flight test sequence')
 
@@ -116,16 +144,23 @@ class FlightTestNode(Node):
 
         self.get_logger().info('Vehicle status received')
 
-        # Send a few setpoints before engaging offboard mode
-        self.get_logger().info('Sending initial setpoints')
+        # Send setpoints before engaging offboard mode (PX4 requires streaming setpoints)
+        self.get_logger().info('Streaming initial setpoints (5 seconds)')
+        for i in range(50):
+            self.publish_offboard_control_mode()
+            self.publish_trajectory_setpoint(0.0, 0.0, self.takeoff_height)
+            time.sleep(0.1)
+
+        # Engage offboard mode first, then arm
+        self.engage_offboard_mode()
+
+        # Continue streaming setpoints after engaging offboard mode
         for i in range(10):
             self.publish_offboard_control_mode()
             self.publish_trajectory_setpoint(0.0, 0.0, self.takeoff_height)
             time.sleep(0.1)
 
-        # Arm and engage offboard mode
         self.arm()
-        self.engage_offboard_mode()
 
         # Takeoff
         self.get_logger().info(f'Taking off to {-self.takeoff_height}m')
@@ -136,8 +171,24 @@ class FlightTestNode(Node):
             time.sleep(0.1)
             rclpy.spin_once(self, timeout_sec=0)
 
-        # Hover
-        self.get_logger().info(f'Hovering for {self.hover_duration}s')
+        self.get_logger().info('Takeoff complete')
+
+        # Hover at takeoff position
+        self.get_logger().info(f'Hovering at takeoff position for {self.hover_duration}s')
+        start_time = time.time()
+        while time.time() - start_time < self.hover_duration:
+            self.publish_offboard_control_mode()
+            self.publish_trajectory_setpoint(0.0, 0.0, self.takeoff_height)
+            time.sleep(0.1)
+            rclpy.spin_once(self, timeout_sec=0)
+
+        # Fly to waypoints
+        for i, (x, y, z) in enumerate(self.waypoints, 1):
+            self.get_logger().info(f'=== Waypoint {i}/{len(self.waypoints)} ===')
+            self.fly_to_waypoint(x, y, z, duration=3.0)
+
+        # Hover at home before landing
+        self.get_logger().info('Arrived at home position, hovering before landing')
         start_time = time.time()
         while time.time() - start_time < self.hover_duration:
             self.publish_offboard_control_mode()
