@@ -7,8 +7,15 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     x11-utils \
     xvfb \
-    openbox \
+    xdotool \
+    x11-apps \
     mesa-utils \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libglvnd0 \
+    libglx0 \
+    libegl1 \
+    openbox \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy flight test scripts
@@ -23,6 +30,7 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 source /root/workspace/ros2_ws/install/setup.bash\n\
+export ROS_DOMAIN_ID=0\n\
 export PATH="/root/scripts:$PATH"\n\
 exec "$@"' > /entrypoint.sh && \
     chmod +x /entrypoint.sh

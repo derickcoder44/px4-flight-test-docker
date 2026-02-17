@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Source ROS 2 environment
+source /opt/ros/humble/setup.bash
+source /root/workspace/ros2_ws/install/setup.bash
+
 LOG_DIR=/root/logs
 mkdir -p "$LOG_DIR"
 
@@ -99,8 +103,6 @@ fi
 # Wait for ROS topics to appear
 echo "Waiting for ROS topics..."
 timeout 60 bash -c '
-    source /opt/ros/humble/setup.bash
-    source /root/workspace/ros2_ws/install/setup.bash
     while ! ros2 topic list | grep -q /fmu/fmu/out/vehicle_status; do
         echo "Waiting for vehicle_status topic..."
         sleep 2
@@ -170,7 +172,14 @@ python3 /root/scripts/flight_test.py 2>&1 | tee "$LOG_DIR/flight_test.log"
 # Cleanup
 echo ""
 echo "=== Stopping Services ==="
+
+# Stop video recording first (send SIGINT for clean shutdown but don't wait)
+echo "Stopping video recording..."
+kill -INT $FFMPEG_PID 2>/dev/null || true
+
+# Kill PX4, Gazebo, and DDS
 kill $PX4_PID 2>/dev/null || true
+kill $GZ_PID 2>/dev/null || true
 kill $DDS_PID 2>/dev/null || true
 
 # Stop video recording

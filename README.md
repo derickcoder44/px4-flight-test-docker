@@ -14,14 +14,14 @@ This image builds on top of [`px4-sim-docker`](https://github.com/derickcoder44/
 ### Pull from GitHub Container Registry
 
 ```bash
-docker pull ghcr.io/derickcoder44/px4-flight-test-docker:latest
+docker pull ghcr.io/Poppy-Robotics/px4-flight-test-docker:latest
 ```
 
 ### Run Flight Test
 
 ```bash
 docker run -it --rm \
-  ghcr.io/derickcoder44/px4-flight-test-docker:latest \
+  ghcr.io/Poppy-Robotics/px4-flight-test-docker:latest \
   /root/scripts/run_flight_test.sh
 ```
 
@@ -35,7 +35,7 @@ This will:
 ### Build Locally
 
 ```bash
-git clone --recursive https://github.com/derickcoder44/px4-flight-test-docker.git
+git clone --recursive https://github.com/Poppy-Robotics/px4-flight-test-docker.git
 cd px4-flight-test-docker
 docker build -t px4-flight-test-docker .
 ```
@@ -83,7 +83,7 @@ Set environment variable:
 
 ```bash
 docker run -e PX4_GZ_MODEL=x500_depth \
-  ghcr.io/derickcoder44/px4-flight-test-docker:latest \
+  ghcr.io/Poppy-Robotics/px4-flight-test-docker:latest \
   /root/scripts/run_flight_test.sh
 ```
 
