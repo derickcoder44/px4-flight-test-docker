@@ -37,7 +37,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/Poppy-Robotics/px4-flight-test-docker
+          images: ghcr.io/poppy-robotics/px4-flight-test-docker
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -53,14 +53,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: |
             type=gha
-            type=registry,ref=ghcr.io/Poppy-Robotics/px4-flight-test-docker:latest
+            type=registry,ref=ghcr.io/poppy-robotics/px4-flight-test-docker:latest
           cache-to: type=gha,mode=max
 
   run-flight-test:
     needs: build-image
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/Poppy-Robotics/px4-flight-test-docker:latest
+      image: ghcr.io/poppy-robotics/px4-flight-test-docker:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -76,7 +76,7 @@ jobs:
           mkdir -p outputs
           docker run --rm \
             -v $(pwd)/outputs:/root/logs \
-            ghcr.io/derickcoder44/px4-flight-test-docker:${{ github.ref_name }} \
+            ghcr.io/poppy-robotics/px4-flight-test-docker:${{ github.ref_name }} \
             /root/scripts/run_flight_test.sh
 
       - name: upload logs, video, and ulog
