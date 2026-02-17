@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     libglvnd0 \
     libglx0 \
     libegl1 \
+    openbox \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy flight test scripts

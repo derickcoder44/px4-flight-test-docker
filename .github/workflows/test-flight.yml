@@ -73,9 +73,13 @@ jobs:
       - name: run flight test
         shell: bash
         run: |
-          /root/scripts/run_flight_test.sh
+          mkdir -p outputs
+          docker run --rm \
+            -v $(pwd)/outputs:/root/logs \
+            ghcr.io/derickcoder44/px4-flight-test-docker:${{ github.ref_name }} \
+            /root/scripts/run_flight_test.sh
 
-      - name: upload logs
+      - name: upload logs, video, and ulog
         if: always()
         uses: actions/upload-artifact@v4
         with:
